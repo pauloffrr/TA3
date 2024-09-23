@@ -26,4 +26,7 @@ public class CenaDAO {
         }
         return cenas;
     }
+
+    public Cena getCenaById(int idCenaAtual) {
+    }
 }
