@@ -1,82 +1,63 @@
+import com.google.gson.Gson;
+import model.Acao;
+import model.Cena;
+import model.SaveManager;
+import repositorio.AcoesDAO;
+import repositorio.CenaDAO;
+import repositorio.ItemDAO;
+import repositorio.SaveDAO;
+import model.Item;
+import spark.Spark;
+
+import java.sql.SQLException;
 import java.util.List;
-import java.util.Scanner;
+
+import static spark.Spark.post;
 
 public class Main {
+    public static final Gson gson = new Gson();
+
     public static void main(String[] args) {
-        CenaDAO cenaDAO = new CenaDAO();
-        AcoesDAO acoesDAO = new AcoesDAO(); // DAO para as ações
-        SaveDAO saveDAO = new SaveDAO();    // DAO para o save
-        Scanner scanner = new Scanner(System.in);
+        try {
 
-        // Perguntar ao jogador se quer carregar um jogo salvo
-        System.out.println("Deseja carregar o jogo salvo? (s/n)");
-        String resposta = scanner.nextLine();
+            SaveManager saveManager = SaveDAO.newGame();
+            String json = gson.toJson(saveManager);
 
-        int idCenaAtual = 1; // Cena inicial padrão
+            Spark.get("/", (req, res) -> json);
 
-        if (resposta.equalsIgnoreCase("s")) {
-            Integer saveId = saveDAO.getCenaById(); // Pega o id da cena salva
-            if (saveId != null) {
-                idCenaAtual = saveId;
-                System.out.println("Jogo carregado. Continuando da cena " + idCenaAtual);
-            } else {
-                System.out.println("Nenhum jogo salvo encontrado. Iniciando um novo jogo.");
-            }
+            Spark.get("/cena/:id", (req, res) -> {
+                Integer idCena = Integer.parseInt(req.params(":id"));
+                String cenaJson = gson.toJson(CenaDAO.findCenaById(idCena));
+                return cenaJson;
+            });
+
+            Spark.post("/comando/:descricao", (req, res) -> {
+                String descricao = req.queryParams("descricao_acao");
+                Integer idCenaAtual = Integer.parseInt(req.queryParams("id"));
+
+                AcoesDAO acaoDAO = new AcoesDAO();
+                Acao acao = acaoDAO.findAcaoByComando(idCenaAtual, descricao);
+
+                if (acao != null) {
+                    Cena proximaCena = CenaDAO.findCenaById(acao.getProximaCenaId());
+                    return gson.toJson(proximaCena);
+                } else {
+                    return "Comando inválido ou ação não encontrada.";
+                }
+            });
+
+            Cena cena = CenaDAO.findCenaById(1);
+            System.out.println(cena.toString());
+
+            List<Item> items = ItemDAO.findItemByScene(cena);
+            System.out.println("Itens: " + items);
+
+            System.out.println("save");
+            saveManager = SaveDAO.newGame();
+            System.out.println(saveManager.getCenaAtual().getDescricao());
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
-
-        boolean jogoAtivo = true;
-
-        while (jogoAtivo) {
-            // Obter a cena atual
-            Cena cenaAtual = cenaDAO.getCenaById(idCenaAtual);
-            if (cenaAtual == null) {
-                System.out.println("Cena não encontrada!");
-                break;
-            }
-
-            // Exibir a descrição da cena
-            System.out.println(cenaAtual.getDescricao());
-
-            // Obter as ações possíveis para essa cena
-            List<Acao> acoes = acoesDAO.getAcoesByCenaId(idCenaAtual);
-            if (acoes.isEmpty()) {
-                System.out.println("Não há ações disponíveis para esta cena.");
-                break;
-            }
-
-            // Exibir as opções de ação
-            System.out.println("Escolha uma ação:");
-            for (int i = 0; i < acoes.size(); i++) {
-                System.out.println((i + 1) + ". " + acoes.get(i).getDescricao());
-            }
-
-            // Capturar a escolha do jogador
-            int escolha = scanner.nextInt();
-            if (escolha < 1 || escolha > acoes.size()) {
-                System.out.println("Escolha inválida.");
-                continue;
-            }
-
-            // Avançar para a próxima cena com base na ação escolhida
-            Acao acaoEscolhida = acoes.get(escolha - 1);
-            idCenaAtual = acaoEscolhida.getProximaCenaId();
-
-            // Oferecer ao jogador a opção de salvar o jogo
-            System.out.println("Deseja salvar o jogo? (s/n)");
-            scanner.nextLine();  // Consumir a nova linha pendente
-            String salvarJogo = scanner.nextLine();
-            if (salvarJogo.equalsIgnoreCase("s")) {
-                saveDAO.salvarProgresso(idCenaAtual); // Salva o ID da cena atual
-                System.out.println("Jogo salvo!");
-            }
-
-            // Verificar se o jogo terminou (exemplo: ID de cena final = -1)
-            if (idCenaAtual == -1) {
-                System.out.println("Fim do jogo.");
-                jogoAtivo = false;
-            }
-        }
-
-        scanner.close();
     }
 }
