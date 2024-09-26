@@ -31,16 +31,17 @@ public class Main {
                 return cenaJson;
             });
 
-            Spark.post("/comando/:descricao", (req, res) -> {
+            Spark.post("/comando", (req, res) -> {
                 String descricao = req.queryParams("descricao_acao");
-                Integer idCenaAtual = Integer.parseInt(req.queryParams("id"));
+                Integer idCenaAtual = Integer.parseInt(req.queryParams("id_cena"));
 
-                AcoesDAO acaoDAO = new AcoesDAO();
-                Acao acao = acaoDAO.findAcaoByComando(idCenaAtual, descricao);
+                AcoesDAO acoesDAO = new AcoesDAO();
+
+                Acao acao = AcoesDAO.findAcaoByComando(idCenaAtual, descricao);
 
                 if (acao != null) {
                     Cena proximaCena = CenaDAO.findCenaById(acao.getProximaCenaId());
-                    return gson.toJson(proximaCena);
+                    return "Você escolheu: " + acao.getDescricao() + "\nPróxima Cena: " + proximaCena.getDescricao();
                 } else {
                     return "Comando inválido ou ação não encontrada.";
                 }
@@ -49,12 +50,16 @@ public class Main {
             Cena cena = CenaDAO.findCenaById(1);
             System.out.println(cena.toString());
 
+
+
             List<Item> items = ItemDAO.findItemByScene(cena);
             System.out.println("Itens: " + items);
 
             System.out.println("save");
             saveManager = SaveDAO.newGame();
             System.out.println(saveManager.getCenaAtual().getDescricao());
+
+
 
         } catch (SQLException e) {
             throw new RuntimeException(e);

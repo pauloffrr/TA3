@@ -14,7 +14,7 @@ public class AcoesDAO {
 
     public static Acao findAcaoByComando(Integer idCena, String comando) throws SQLException {
         Connection conn = DatabaseManager.getConnection();
-        String sql = "SELECT * FROM acoes WHERE id_cena = ? AND comando = ?";
+        String sql = "SELECT * FROM acoes WHERE id = ? AND descricao_acao = ?";
         PreparedStatement stmt = conn.prepareStatement(sql);
         stmt.setInt(1, idCena);
         stmt.setString(1, comando);
